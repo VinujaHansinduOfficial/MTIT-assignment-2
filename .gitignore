@@ -1,0 +1,50 @@
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.sqlite3
+
+# Virtual Environment
+.venv/
+venv/
+env/
+
+# Environment variables
+.env
+
+# =========================
+# FastAPI / Logs
+# =========================
+*.log
+
+# =========================
+# VS Code
+# =========================
+.vscode/
+
+# =========================
+# OS Files
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Node / React
+# =========================
+frontend/node_modules/
+frontend/build/
+
+# =========================
+# Package lock (optional)
+# =========================
+package-lock.json
+yarn.lock
+
+# =========================
+# Misc
+# =========================
+.idea/
+*.swp
