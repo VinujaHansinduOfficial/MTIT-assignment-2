@@ -288,23 +288,41 @@ async def delete_subject(subject_id: int):
 # =====================================================
 @app.get("/enrollments", summary="Get all enrollments")
 async def get_enrollments():
-    return await forward_request("GET", f"{ENROLLMENT_SERVICE}/")
+    return await forward_request(
+        "GET",
+        f"{ENROLLMENT_SERVICE}/enrollments/"
+    )
 
 
 @app.get("/enrollments/student/{student_id}", summary="Get enrollments by student ID")
 async def get_student_enrollments(student_id: int):
-    return await forward_request("GET", f"{ENROLLMENT_SERVICE}/student/{student_id}")
+    return await forward_request(
+        "GET",
+        f"{ENROLLMENT_SERVICE}/enrollments/student/{student_id}"
+    )
 
 
 @app.post("/enrollments", summary="Enroll student")
 async def enroll_student(enrollment: EnrollmentCreate):
     return await forward_request(
         "POST",
-        f"{ENROLLMENT_SERVICE}/",
+        f"{ENROLLMENT_SERVICE}/enrollments/",
+        json_data=enrollment.model_dump()
+    )
+
+
+@app.put("/enrollments/{id}", summary="Update enrollment")
+async def update_enrollment(id: int, enrollment: EnrollmentCreate):
+    return await forward_request(
+        "PUT",
+        f"{ENROLLMENT_SERVICE}/enrollments/{id}",
         json_data=enrollment.model_dump()
     )
 
 
 @app.delete("/enrollments/{id}", summary="Delete enrollment")
 async def delete_enrollment(id: int):
-    return await forward_request("DELETE", f"{ENROLLMENT_SERVICE}/{id}")
+    return await forward_request(
+        "DELETE",
+        f"{ENROLLMENT_SERVICE}/enrollments/{id}"
+    )
