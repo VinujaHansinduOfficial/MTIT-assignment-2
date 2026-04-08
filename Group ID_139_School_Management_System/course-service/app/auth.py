@@ -7,7 +7,7 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
-from . import models, schemas
+from . import models
 from .database import SessionLocal
 
 SECRET_KEY = "change-me-in-production-use-a-long-random-string"

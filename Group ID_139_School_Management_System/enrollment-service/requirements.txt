@@ -4,4 +4,6 @@ sqlalchemy
 pymysql
 python-dotenv
 pydantic
-mysql-connector-python
+python-jose[cryptography]
+passlib[bcrypt]
+python-multipart

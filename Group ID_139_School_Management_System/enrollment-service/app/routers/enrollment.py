@@ -1,124 +1,96 @@
-from fastapi import APIRouter, HTTPException
-from app.database import get_db_connection
-from app.schemas import EnrollmentCreate
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+
+from app import models, schemas
+from app.database import get_db
+from app.auth import get_current_user, get_current_admin
 
 router = APIRouter()
 
-# 1. Enroll Student
-@router.post("/")
-def enroll_student(enrollment: EnrollmentCreate):
-    db = get_db_connection()
-    cursor = db.cursor(dictionary=True)
 
-    check_query = """
-    SELECT * FROM enrollments 
-    WHERE student_id=%s AND subject_id=%s
-    """
-    cursor.execute(check_query, (enrollment.student_id, enrollment.subject_id))
+# 1. Enroll Student — admin only
+@router.post("/", status_code=status.HTTP_201_CREATED)
+def enroll_student(
+    enrollment: schemas.EnrollmentCreate,
+    db: Session = Depends(get_db),
+    _: models.User = Depends(get_current_admin),
+):
+    existing = db.query(models.Enrollment).filter(
+        models.Enrollment.student_id == enrollment.student_id,
+        models.Enrollment.subject_id == enrollment.subject_id,
+    ).first()
 
-    if cursor.fetchone():
-        cursor.close()
-        db.close()
+    if existing:
         raise HTTPException(status_code=400, detail="Student already enrolled")
 
-    query = """
-    INSERT INTO enrollments (student_id, subject_id)
-    VALUES (%s, %s)
-    """
-    cursor.execute(query, (enrollment.student_id, enrollment.subject_id))
+    new_enrollment = models.Enrollment(
+        student_id=enrollment.student_id,
+        subject_id=enrollment.subject_id,
+    )
+    db.add(new_enrollment)
     db.commit()
-
-    cursor.close()
-    db.close()
-    return {"message": "Enrollment successful"}
+    db.refresh(new_enrollment)
+    return {"message": "Enrollment successful", "id": new_enrollment.id}
 
 
-# 2. Get all enrollments
-@router.get("/")
-def get_all_enrollments():
-    db = get_db_connection()
-    cursor = db.cursor(dictionary=True)
-
-    cursor.execute("SELECT * FROM enrollments")
-    data = cursor.fetchall()
-
-    cursor.close()
-    db.close()
-    return data
+# 2. Get all enrollments — any authenticated user
+@router.get("/", response_model=list[schemas.EnrollmentResponse])
+def get_all_enrollments(
+    db: Session = Depends(get_db),
+    _: models.User = Depends(get_current_user),
+):
+    return db.query(models.Enrollment).all()
 
 
-# 3. Get enrollments by student id
-@router.get("/student/{student_id}")
-def get_student_enrollments(student_id: int):
-    db = get_db_connection()
-    cursor = db.cursor(dictionary=True)
-
-    query = "SELECT * FROM enrollments WHERE student_id=%s"
-    cursor.execute(query, (student_id,))
-    data = cursor.fetchall()
-
-    cursor.close()
-    db.close()
-    return data
+# 3. Get enrollments by student id — any authenticated user
+@router.get("/student/{student_id}", response_model=list[schemas.EnrollmentResponse])
+def get_student_enrollments(
+    student_id: int,
+    db: Session = Depends(get_db),
+    _: models.User = Depends(get_current_user),
+):
+    return db.query(models.Enrollment).filter(
+        models.Enrollment.student_id == student_id
+    ).all()
 
 
-# 4. Update enrollment
+# 4. Update enrollment — admin only
 @router.put("/{id}")
-def update_enrollment(id: int, enrollment: EnrollmentCreate):
-    db = get_db_connection()
-    cursor = db.cursor(dictionary=True)
-
-    # Check whether this enrollment exists
-    cursor.execute("SELECT * FROM enrollments WHERE id=%s", (id,))
-    existing = cursor.fetchone()
-
+def update_enrollment(
+    id: int,
+    enrollment: schemas.EnrollmentCreate,
+    db: Session = Depends(get_db),
+    _: models.User = Depends(get_current_admin),
+):
+    existing = db.query(models.Enrollment).filter(models.Enrollment.id == id).first()
     if not existing:
-        cursor.close()
-        db.close()
         raise HTTPException(status_code=404, detail="Enrollment not found")
 
-    # Check duplicate with another record
-    duplicate_query = """
-    SELECT * FROM enrollments
-    WHERE student_id=%s AND subject_id=%s AND id != %s
-    """
-    cursor.execute(
-        duplicate_query,
-        (enrollment.student_id, enrollment.subject_id, id)
-    )
-    duplicate = cursor.fetchone()
+    duplicate = db.query(models.Enrollment).filter(
+        models.Enrollment.student_id == enrollment.student_id,
+        models.Enrollment.subject_id == enrollment.subject_id,
+        models.Enrollment.id != id,
+    ).first()
 
     if duplicate:
-        cursor.close()
-        db.close()
         raise HTTPException(status_code=400, detail="Student already enrolled in this subject")
 
-    update_query = """
-    UPDATE enrollments
-    SET student_id=%s, subject_id=%s
-    WHERE id=%s
-    """
-    cursor.execute(
-        update_query,
-        (enrollment.student_id, enrollment.subject_id, id)
-    )
+    existing.student_id = enrollment.student_id
+    existing.subject_id = enrollment.subject_id
     db.commit()
-
-    cursor.close()
-    db.close()
     return {"message": "Enrollment updated successfully"}
 
 
-# 5. Delete enrollment
-@router.delete("/{id}")
-def delete_enrollment(id: int):
-    db = get_db_connection()
-    cursor = db.cursor()
+# 5. Delete enrollment — admin only
+@router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_enrollment(
+    id: int,
+    db: Session = Depends(get_db),
+    _: models.User = Depends(get_current_admin),
+):
+    enrollment = db.query(models.Enrollment).filter(models.Enrollment.id == id).first()
+    if not enrollment:
+        raise HTTPException(status_code=404, detail="Enrollment not found")
 
-    query = "DELETE FROM enrollments WHERE id=%s"
-    cursor.execute(query, (id,))
+    db.delete(enrollment)
     db.commit()
-
-    cursor.close()
-    db.close()
-    return {"message": "Enrollment deleted"}

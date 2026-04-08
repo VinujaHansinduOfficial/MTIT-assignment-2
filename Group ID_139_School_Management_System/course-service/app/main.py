@@ -1,11 +1,26 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.exc import OperationalError
 
 from app.database import engine, Base
-from app.routers import course_router, subject_router
+from app.routers import course_router, subject_router, auth_router
 
-# Auto-create tables on startup
-Base.metadata.create_all(bind=engine)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    try:
+        Base.metadata.create_all(bind=engine)
+        print("✅ Database tables ready.")
+    except OperationalError as e:
+        print(
+            f"⚠️ Could not connect to the database at startup: {e}\n"
+            "Make sure MySQL is running and DATABASE_URL is correct.\n"
+            "The app will still start, but DB operations will fail until the connection is available."
+        )
+    yield
+
 
 app = FastAPI(
     title="Course & Subject Management Service",
@@ -23,6 +38,7 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -33,6 +49,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth_router.router)
 app.include_router(course_router.router)
 app.include_router(subject_router.router)
 
@@ -49,3 +66,4 @@ def health_check():
             "subjects": "/subjects",
         }
     }
+

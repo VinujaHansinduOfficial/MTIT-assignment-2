@@ -7,8 +7,8 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
-from . import models, schemas
-from .database import SessionLocal
+from app import models
+from app.database import SessionLocal
 
 SECRET_KEY = "change-me-in-production-use-a-long-random-string"
 ALGORITHM = "HS256"
@@ -16,6 +16,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+# Raw Bearer — Swagger shows a plain token input, not a username/password form
 bearer_scheme = HTTPBearer()
 
 

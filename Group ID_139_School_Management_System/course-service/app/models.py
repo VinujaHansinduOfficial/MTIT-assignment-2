@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime
+from sqlalchemy import Boolean, Column, Integer, String, Text, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 
 from app.database import Base
@@ -15,8 +15,6 @@ class Course(Base):
     description = Column(Text, nullable=True)
     credits = Column(Integer, nullable=False, default=3)
 
-    # Use Python-side timestamps to avoid MySQL DEFAULT CURRENT_TIMESTAMP issues
-    # on DATETIME columns in some MySQL/MariaDB versions/configurations.
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -44,3 +42,13 @@ class Subject(Base):
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     course = relationship("Course", back_populates="subjects")
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(100), unique=True, index=True, nullable=False)
+    email = Column(String(100), unique=True, index=True, nullable=False)
+    hashed_password = Column(String(255), nullable=False)
+    is_admin = Column(Boolean, default=False, nullable=False)
