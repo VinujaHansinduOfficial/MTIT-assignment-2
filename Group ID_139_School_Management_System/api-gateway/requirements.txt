@@ -1,0 +1,5 @@
+fastapi
+uvicorn
+httpx
+pydantic[email]
+python-jose[cryptography]
