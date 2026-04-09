@@ -64,7 +64,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 # DB session helper (used only by auth management endpoints)
 # ---------------------------------------------------------------------------
 def get_db():
-    from ..database import SessionLocal
+    from .database import SessionLocal
     db = SessionLocal()
     try:
         yield db
