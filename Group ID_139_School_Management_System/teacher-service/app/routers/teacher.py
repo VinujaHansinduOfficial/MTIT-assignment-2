@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from .. import models, schemas, database
-from ..auth import get_current_user, get_current_admin
+from ..auth import get_current_user, get_current_admin, TokenUser
 
 router = APIRouter(tags=["teachers"])
 
@@ -23,7 +23,7 @@ def get_db():
 def create_teacher(
     teacher: schemas.TeacherCreate,
     db: Session = Depends(get_db),
-    _: models.User = Depends(get_current_admin),
+    _: TokenUser = Depends(get_current_admin),
 ):
     new_teacher = models.Teacher(**teacher.dict())
     db.add(new_teacher)
@@ -38,7 +38,7 @@ def create_teacher(
 )
 def get_teachers(
     db: Session = Depends(get_db),
-    _: models.User = Depends(get_current_user),
+    _: TokenUser = Depends(get_current_user),
 ):
     return db.query(models.Teacher).all()
 
@@ -50,7 +50,7 @@ def get_teachers(
 def get_teacher(
     id: int,
     db: Session = Depends(get_db),
-    _: models.User = Depends(get_current_user),
+    _: TokenUser = Depends(get_current_user),
 ):
     t = db.query(models.Teacher).filter(models.Teacher.id == id).first()
     if not t:
@@ -66,7 +66,7 @@ def update_teacher(
     id: int,
     teacher: schemas.TeacherCreate,
     db: Session = Depends(get_db),
-    _: models.User = Depends(get_current_admin),
+    _: TokenUser = Depends(get_current_admin),
 ):
     t = db.query(models.Teacher).filter(models.Teacher.id == id).first()
     if not t:
@@ -86,7 +86,7 @@ def update_teacher(
 def delete_teacher(
     id: int,
     db: Session = Depends(get_db),
-    _: models.User = Depends(get_current_admin),
+    _: TokenUser = Depends(get_current_admin),
 ):
     t = db.query(models.Teacher).filter(models.Teacher.id == id).first()
     if not t:

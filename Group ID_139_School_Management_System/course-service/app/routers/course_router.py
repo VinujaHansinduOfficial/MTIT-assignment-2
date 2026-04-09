@@ -8,7 +8,7 @@ from app.schemas import (
     CourseCreate, CourseUpdate,
     CourseResponse, CourseWithSubjects, MessageResponse,
 )
-from app.auth import get_current_user, get_current_admin
+from app.auth import get_current_user, get_current_admin, TokenUser
 
 router = APIRouter(
     prefix="/courses",

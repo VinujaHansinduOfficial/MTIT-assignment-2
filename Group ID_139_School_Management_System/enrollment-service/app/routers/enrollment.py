@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app import models, schemas
 from app.database import get_db
-from app.auth import get_current_user, get_current_admin
+from app.auth import get_current_user, get_current_admin, TokenUser
 
 router = APIRouter()
 
@@ -13,7 +13,7 @@ router = APIRouter()
 def enroll_student(
     enrollment: schemas.EnrollmentCreate,
     db: Session = Depends(get_db),
-    _: models.User = Depends(get_current_admin),
+    _: TokenUser = Depends(get_current_admin),
 ):
     existing = db.query(models.Enrollment).filter(
         models.Enrollment.student_id == enrollment.student_id,
@@ -37,7 +37,7 @@ def enroll_student(
 @router.get("/", response_model=list[schemas.EnrollmentResponse])
 def get_all_enrollments(
     db: Session = Depends(get_db),
-    _: models.User = Depends(get_current_user),
+    _: TokenUser = Depends(get_current_user),
 ):
     return db.query(models.Enrollment).all()
 
@@ -47,7 +47,7 @@ def get_all_enrollments(
 def get_student_enrollments(
     student_id: int,
     db: Session = Depends(get_db),
-    _: models.User = Depends(get_current_user),
+    _: TokenUser = Depends(get_current_user),
 ):
     return db.query(models.Enrollment).filter(
         models.Enrollment.student_id == student_id
@@ -60,7 +60,7 @@ def update_enrollment(
     id: int,
     enrollment: schemas.EnrollmentCreate,
     db: Session = Depends(get_db),
-    _: models.User = Depends(get_current_admin),
+    _: TokenUser = Depends(get_current_admin),
 ):
     existing = db.query(models.Enrollment).filter(models.Enrollment.id == id).first()
     if not existing:
@@ -86,7 +86,7 @@ def update_enrollment(
 def delete_enrollment(
     id: int,
     db: Session = Depends(get_db),
-    _: models.User = Depends(get_current_admin),
+    _: TokenUser = Depends(get_current_admin),
 ):
     enrollment = db.query(models.Enrollment).filter(models.Enrollment.id == id).first()
     if not enrollment:

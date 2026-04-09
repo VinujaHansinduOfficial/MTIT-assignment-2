@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app import models, schemas
 from app.database import SessionLocal
-from app.auth import get_current_user, get_current_admin
+from app.auth import get_current_user, get_current_admin, TokenUser
 
 router = APIRouter()
 
@@ -20,7 +20,7 @@ def get_db():
 def create_student(
     student: schemas.StudentCreate,
     db: Session = Depends(get_db),
-    _: models.User = Depends(get_current_admin),
+    _: TokenUser = Depends(get_current_admin),
 ):
     new_student = models.Student(**student.dict())
     db.add(new_student)
@@ -33,7 +33,7 @@ def create_student(
 @router.get("/students", response_model=list[schemas.StudentResponse])
 def get_students(
     db: Session = Depends(get_db),
-    _: models.User = Depends(get_current_user),
+    _: TokenUser = Depends(get_current_user),
 ):
     return db.query(models.Student).all()
 
@@ -43,7 +43,7 @@ def get_students(
 def get_student(
     id: int,
     db: Session = Depends(get_db),
-    _: models.User = Depends(get_current_user),
+    _: TokenUser = Depends(get_current_user),
 ):
     student = db.query(models.Student).filter(models.Student.id == id).first()
     if not student:
@@ -57,7 +57,7 @@ def update_student(
     id: int,
     updated_data: schemas.StudentUpdate,
     db: Session = Depends(get_db),
-    _: models.User = Depends(get_current_admin),
+    _: TokenUser = Depends(get_current_admin),
 ):
     student = db.query(models.Student).filter(models.Student.id == id).first()
 
@@ -79,7 +79,7 @@ def update_student(
 def delete_student(
     id: int,
     db: Session = Depends(get_db),
-    _: models.User = Depends(get_current_admin),
+    _: TokenUser = Depends(get_current_admin),
 ):
     student = db.query(models.Student).filter(models.Student.id == id).first()
 

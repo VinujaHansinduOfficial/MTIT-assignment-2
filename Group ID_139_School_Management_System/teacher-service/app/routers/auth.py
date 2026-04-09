@@ -8,6 +8,8 @@ from ..auth import (
     verify_password,
     create_access_token,
     get_current_admin,
+
+    TokenUser,
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -58,7 +60,7 @@ def login(credentials: schemas.UserLogin, db: Session = Depends(get_db)):
 def register_admin(
     user_in: schemas.AdminRegister,
     db: Session = Depends(get_db),
-    _: models.User = Depends(get_current_admin),
+    _: TokenUser = Depends(get_current_admin),
 ):
     if db.query(models.User).filter(models.User.username == user_in.username).first():
         raise HTTPException(status_code=400, detail="Username already registered")
@@ -84,7 +86,7 @@ def register_admin(
 )
 def list_users(
     db: Session = Depends(get_db),
-    _: models.User = Depends(get_current_admin),
+    _: TokenUser = Depends(get_current_admin),
 ):
     return db.query(models.User).all()
 
@@ -98,13 +100,13 @@ def set_user_role(
     user_id: int,
     body: schemas.PromoteUser,
     db: Session = Depends(get_db),
-    current_admin: models.User = Depends(get_current_admin),
+    current_admin: TokenUser = Depends(get_current_admin),
 ):
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    if user.id == current_admin.id and not body.is_admin:
+    if user.username == current_admin.username and not body.is_admin:
         raise HTTPException(status_code=400, detail="Admins cannot demote themselves")
 
     user.is_admin = body.is_admin
@@ -121,13 +123,13 @@ def set_user_role(
 def delete_user(
     user_id: int,
     db: Session = Depends(get_db),
-    current_admin: models.User = Depends(get_current_admin),
+    current_admin: TokenUser = Depends(get_current_admin),
 ):
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    if user.id == current_admin.id:
+    if user.username == current_admin.username:
         raise HTTPException(status_code=400, detail="Admins cannot delete their own account")
 
     db.delete(user)
