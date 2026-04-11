@@ -4,6 +4,8 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional
 import httpx
 from jose import JWTError, jwt
+import requests
+
 
 # Must match the SECRET_KEY used in all microservices
 SECRET_KEY = "change-me-in-production-use-a-long-random-string"
@@ -20,11 +22,32 @@ app = FastAPI(
 # -----------------------------
 # Service URLs
 # -----------------------------
+PORTS = [8001, 8002, 8003]
+
+def get_auth_service():
+    for port in PORTS:
+        url = f"http://127.0.0.1:{port}"
+        try:
+            # Try health endpoint (recommended)
+            res = requests.get(f"{url}/health", timeout=1)
+            if res.status_code < 500:
+                return url
+        except requests.exceptions.RequestException:
+            continue
+
+    # fallback
+    return f"http://127.0.0.1:{PORTS[0]}"
+
+def get_auth_url(path: str):
+    base = get_auth_service()
+    return f"{base}{path}"
+
+
 STUDENT_SERVICE    = "http://127.0.0.1:8001"
 TEACHER_SERVICE    = "http://127.0.0.1:8002"
 COURSE_SERVICE     = "http://127.0.0.1:8003"
 ENROLLMENT_SERVICE = "http://127.0.0.1:8004"
-AUTH_SERVICE       = "http://127.0.0.1:8002"   # auth lives in teacher-service
+AUTH_SERVICE       = "http://127.0.0.1:8001"   # auth lives in teacher-service
 
 
 # -----------------------------
@@ -417,35 +440,63 @@ async def delete_enrollment(id: int, request: Request, token: str = Depends(get_
 # =====================================================
 # AUTH SERVICE  (login/register are public — no token needed)
 # =====================================================
+
 @app.post("/auth/register", summary="Register a new user (public)")
 async def register_user(data: UserRegister, request: Request):
-    return await forward_request("POST", f"{AUTH_SERVICE}/auth/register",
-                                 request=request, json_data=data.model_dump())
+    return await forward_request(
+        "POST",
+        get_auth_url("/auth/register"),
+        request=request,
+        json_data=data.model_dump()
+    )
 
 @app.post("/auth/login", summary="Login and receive a JWT (public)")
 async def login_user(data: UserLogin, request: Request):
-    return await forward_request("POST", f"{AUTH_SERVICE}/auth/login",
-                                 request=request, json_data=data.model_dump())
+    return await forward_request(
+        "POST",
+        get_auth_url("/auth/login"),
+        request=request,
+        json_data=data.model_dump()
+    )
 
 @app.post("/auth/admin/register", summary="Register an admin user (admin only)")
 async def register_admin(data: AdminRegister, request: Request, token: str = Depends(get_token),
                          _: dict = Depends(require_admin)):
-    return await forward_request("POST", f"{AUTH_SERVICE}/auth/admin/register",
-                                 request=request, json_data=data.model_dump(), token=token)
+    return await forward_request(
+        "POST",
+        get_auth_url("/auth/admin/register"),
+        request=request,
+        json_data=data.model_dump(),
+        token=token
+    )
 
 @app.get("/auth/admin/users", summary="List all users (admin only)")
 async def list_users(request: Request, token: str = Depends(get_token),
                      _: dict = Depends(require_admin)):
-    return await forward_request("GET", f"{AUTH_SERVICE}/auth/admin/users", request=request, token=token)
+    return await forward_request(
+        "GET",
+        get_auth_url("/auth/admin/users"),
+        request=request,
+        token=token
+    )
 
 @app.patch("/auth/admin/users/{user_id}/role", summary="Promote or demote a user (admin only)")
 async def set_user_role(user_id: int, body: PromoteUser, request: Request,
                         token: str = Depends(get_token), _: dict = Depends(require_admin)):
-    return await forward_request("PATCH", f"{AUTH_SERVICE}/auth/admin/users/{user_id}/role",
-                                 request=request, json_data=body.model_dump(), token=token)
+    return await forward_request(
+        "PATCH",
+        get_auth_url(f"/auth/admin/users/{user_id}/role"),
+        request=request,
+        json_data=body.model_dump(),
+        token=token
+    )
 
 @app.delete("/auth/admin/users/{user_id}", summary="Delete a user (admin only)")
 async def delete_user(user_id: int, request: Request, token: str = Depends(get_token),
                       _: dict = Depends(require_admin)):
-    return await forward_request("DELETE", f"{AUTH_SERVICE}/auth/admin/users/{user_id}",
-                                 request=request, token=token)
+    return await forward_request(
+        "DELETE",
+        get_auth_url(f"/auth/admin/users/{user_id}"),
+        request=request,
+        token=token
+    )
